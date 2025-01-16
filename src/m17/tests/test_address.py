@@ -41,4 +41,5 @@ class TestAddress(unittest.TestCase):
         """
         Test that an Address object can be compared to bytes
         """
+        print(bytes(self.me).hex())
         self.assertEqual(bytes(self.me), b'\x00\x00\x01a\xae\x1f')

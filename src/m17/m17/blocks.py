@@ -7,7 +7,7 @@ import random
 import multiprocessing
 
 from .address import Address
-from .frames import ipFrame
+from .frames import IPFrame
 from .framer import M17_IPFramer
 from .const import *
 from .misc import example_bytes,print_hex,chunk,DictDotAttribute
@@ -350,7 +350,7 @@ def m17parse(config,inq,outq):
     Parse incoming bytes into M17 ipFrames
     """
     while 1:
-        f = ipFrame.from_bytes(inq.get())
+        f = IPFrame.from_bytes(inq.get())
         if "verbose" in config and config.verbose:
             print(f)
         outq.put(f)

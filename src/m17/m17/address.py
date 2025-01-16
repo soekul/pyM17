@@ -1,15 +1,16 @@
 """
 M17 Addressing
 """
-import string
 import sys
+import struct
+from typing import Union
 
-import bitstruct
 
-CALLSIGN_ALPHABET = " " + string.ascii_uppercase + string.digits + "-/."
-# "." is TBD
-# print("Alphabet: %s"%(callsign_alphabet))
-# print("len(Alphabet): %d"%(len(callsign_alphabet)))
+from m17.const import CALLSIGN_ALPHABET, M17_ADDRESS_LAYOUT_STRUCT
+M17AddressLayout = struct.Struct(M17_ADDRESS_LAYOUT_STRUCT)
+
+
+AddressParam = Union[int, bytes]
 
 
 class Address:
@@ -45,8 +46,6 @@ class Address:
     >>> Address(callsign="W2FBI") == Address(addr=23178783)
     True
 
-
-
     """
 
     def __init__(self, **kwargs):
@@ -55,28 +54,30 @@ class Address:
                 setattr(self, k, v)
         self.callsign = self.callsign.upper() if hasattr(self, "callsign") else self.decode(self.addr)
         self.addr = self.addr if hasattr(self, "addr") else self.encode(self.callsign)
+        if isinstance(self.addr, int):
+            self.addr = self.addr.to_bytes(6, "big")
 
     def __str__(self):
-        return "%s == 0x%06x" % (self.callsign, self.addr)
+        int_addr = int.from_bytes(self.addr, "big")
+        return f"{self.callsign} == 0x{int_addr:06x}"
 
     def __bytes__(self):
-        return bitstruct.pack("u48", self.addr)
+        return M17AddressLayout.pack(*self.addr)
 
     def __index__(self):
-        return self.addr
+        return int.from_bytes(self.addr, "big")
 
     def __eq__(self, compareto):
-        if type(compareto) == type(""):
-            if compareto.isdigit():  # yeah, gross.
-                return int(compareto) == self.addr
-            else:
-                return compareto.upper() == self.callsign
-        elif type(compareto) == type(1):
-            return compareto == self.addr
-        elif type(compareto) == type(self):
+        if isinstance(compareto, str):
+            return int(compareto) == self.addr if compareto.isdigit() else compareto.upper() == self.callsign
+
+        if isinstance(compareto, int):
+            return compareto == int(self)
+
+        if isinstance(compareto, Address):
             return int(self) == int(compareto)
-        else:
-            return False
+
+        return False
 
     @staticmethod
     def to_dmr_id(something):
@@ -137,14 +138,17 @@ class Address:
             num += charidx
             if num >= 40 ** 9:
                 raise ValueError("Invalid callsign")
-        return num
+        return num.to_bytes(6, "big")
 
     @staticmethod
-    def decode(addr):
+    def decode(addr: AddressParam):
         """
         Decode an address into a callsign
         """
         num = addr
+        if isinstance(addr, bytes):
+            num = int.from_bytes(addr, "big")
+
         if num >= 40 ** 9:
             raise ValueError("Invalid address")
         chars = []
