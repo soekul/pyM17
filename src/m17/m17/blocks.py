@@ -10,7 +10,7 @@ from .address import Address
 from .frames import ipFrame
 from .framer import M17_IPFramer
 from .const import *
-from .misc import example_bytes,_x,chunk,dattr
+from .misc import example_bytes,print_hex,chunk,DictDotAttribute
 from .blocks import *
 import m17.network as network
 
@@ -142,7 +142,7 @@ def tee(header):
         while 1:
             x = inq.get()
             if type(x) == type(b""):
-                print(header, _x(x))
+                print(header, print_hex(x))
             else:
                 print(header, x)
             outq.put(x)

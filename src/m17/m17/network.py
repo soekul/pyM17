@@ -19,7 +19,7 @@ from kademlia.network import Server
 import bitstruct
 import m17
 import m17.misc
-from m17.misc import dattr
+from m17.misc import DictDotAttribute
 import m17.address
 
 import requests
@@ -152,7 +152,7 @@ class m17_networking_direct:
             data,conn = self.recvQ.get_nowait()
             print("Recv:", data,conn)
             if conn[0] not in self.conns:
-                self.conns[ conn ] = dattr({
+                self.conns[ conn ] = DictDotAttribute({
                     "last": time.time(),
                     "conn": conn,
                         })
@@ -172,7 +172,7 @@ class m17_networking_direct:
             ...
             #voice and data packets
         elif payload.startswith(b"M17J"): #M17 Json development and evaluation protocol - the standard is, there is no standard
-            msg = dattr(json.loads(payload[4:].decode("utf-8")))
+            msg = DictDotAttribute(json.loads(payload[4:].decode("utf-8")))
             if msg.msgtype == msgtype.where_am_i: 
                 self.reg_store(msg.callsign, conn) #so we store it
             elif msg.msgtype == msgtype.i_am_here: 

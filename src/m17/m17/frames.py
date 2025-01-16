@@ -3,11 +3,11 @@ import bitstruct
 try:
     from .address import Address
     from .const import *
-    from .misc import _x, chunk, example_bytes
+    from .misc import print_hex, chunk, example_bytes
 except:
     from address import Address
     from const import *
-    from misc import _x, chunk, example_bytes
+    from misc import print_hex, chunk, example_bytes
 
 class initialLICH:
     """
@@ -120,7 +120,7 @@ class regularFrame:
         return bytes(self) == bytes(other)
 
     def __str__(self):
-        return "M17[%d]: %s"%(self.frame_number,_x(self.payload))
+        return "M17[%d]: %s"%(self.frame_number, print_hex(self.payload))
 
     def __bytes__(self):
         b=b""
@@ -168,7 +168,7 @@ class ipFrame(regularFrame):
             raise(Exception("ipFrames need a full LICH passed"))
 
     def __str__(self):
-        return "SID: %04x\n LICH: "%(self.streamid) + self.LICH.src.callsign + " =[%d]> "%(self.LICH.streamtype) + self.LICH.dst.callsign + "\nM17[%d]: %s"%(self.frame_number,_x(self.payload))
+        return "SID: %04x\n LICH: "%(self.streamid) + self.LICH.src.callsign + " =[%d]> "%(self.LICH.streamtype) + self.LICH.dst.callsign + "\nM17[%d]: %s"%(self.frame_number, print_hex(self.payload))
 
     def __bytes__(self):
         b=b""

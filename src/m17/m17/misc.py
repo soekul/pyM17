@@ -1,78 +1,107 @@
-import os
-import sys
-import random
+"""
+misc.py
+"""
 import binascii
-import unittest
+import functools
+import random
+import sys
 
-def __b(size):
+
+def binary_print_factory(size):
+    """
+    Create a function that will print a number in binary, in chunks of a certain size.
+    :param size: size of each chunk
+    """
     def binary_print(num):
-        return " ".join(map(
-            lambda c: c.zfill(size),  #make sure each chunk is padded with zeros to size
-            chunk(format(num, 'b'),-1*size) #chunk into size chunks, starting from the right
-            ))
+        binary_str = format(num, 'b').zfill(size)
+        chunked_str = [binary_str[max(i - size, 0):i] for i in range(len(binary_str), 0, -size)]
+        return " ".join(chunked_str[::-1])
+
     return binary_print
 
-_b4 = __b(4)
-_b8 = __b(8)
-_b16 = __b(16)
-_b = _b8
-_x = lambda b: binascii.hexlify(b, " ", -4)
+
+print_4bits = binary_print_factory(4)
+print_8bits = binary_print_factory(8)
+print_16bits = binary_print_factory(16)
+print_bits = print_8bits
+print_hex = functools.partial(binascii.hexlify, sep=" ", bytes_per_sep=-4)
+
 
 def example_bytes(length):
+    """
+    :param length: number of bytes to generate
+    """
     return bytearray(random.getrandbits(8) for _ in range(length))
 
+
 def demonstrate_chunk():
+    """
+    demonstrate the chunk function
+    """
     ab = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     print(chunk(ab, 5))
     print(chunk(ab, -5))
 
-def chunk(b:bytes, size:int):
+
+def chunk(b: bytes, size: int):
     """
-    if size is positive, chunks starting left to right
-    if size is negative, chunk from the right instead
-    chunk size is abs(size)
-    chunk size of 0 is an error
-    returns a list of chunks of that size
+    Chunk a byte array into chunks of a certain size
+
+    :param b: bytes to chunk
+    :param size: size of each chunk, chunk size is abs(size), chunk size of 0 is an error
+        if size is positive, chunks starting left to right
+        if size is negative, chunk from the right instead
+    :return: a list of chunks of that size
     """
     fromright = size < 0
-    size=abs(size)
+    size = abs(size)
     if fromright:
-        return [ b[::-1][i:i+size][::-1] for i in range(0, len(b), size)][::-1]
-        #I'm not sorry
-        #okay, maybe a little bit.
+        return [b[::-1][i:i + size][::-1] for i in range(0, len(b), size)][::-1]
+        # I'm not sorry
+        # okay, maybe a little bit.
     else:
-        return [ b[i:i+size] for i in range(0, len(b), size)]
+        return [b[i:i + size] for i in range(0, len(b), size)]
+
 
 def test_b(x):
-    print(_b4(int(x)))
-    print(_b(int(x)))
-    print(_b8(int(x)))
-    print(_b16(int(x)))
-
-class dattr(dict):
     """
-    "dict-attr", used for when you don't want to type [""] all the time
+    Test the binary print functions
+    :param x: number to test
+
+    """
+    print(print_4bits(int(x)))
+    print(print_bits(int(x)))
+    print(print_8bits(int(x)))
+    print(print_16bits(int(x)))
+
+
+class DictDotAttribute(dict):
+    """
+    "DictDotAttribute", used for when you don't want to type [""] all the time
     (and i think it looks nicer for things like config settings)
     """
-    def __getattr__(self,name):
+
+    def __getattr__(self, name):
         """
-        With a dattr, you can do this:
-        >>> x = dattr({"abc":True})
+        With a DictDotAttribute, you can do this:
+        >>> x = DictDotAttribute({"abc":True})
         >>> x.abc
         True
 
         """
-        if type(self[name]) == type({}): 
-            #make sure we wrap any nested dicts when we encounter them
-            self[name] = dattr(self[name]) #has to assign to save any changes to nested dattrs
-            #e.g.  x.abc.fed = "in" 
-        #otherwise just make our key,value pairs accessible through . (e.g. x.name)
-        return self[name]
-    def __setattr__(self,name,value):
-        """
-        With a dattr, you can do this:
+        if name in self and isinstance(self[name], dict) and not isinstance(self[name], DictDotAttribute):
+            # make sure we wrap any nested dicts when we encounter them
+            self[name] = DictDotAttribute(self[name])  # has to assign to save any changes to nested DictDotAttributes
+            # e.g.  x.abc.fed = "in"
 
-        >>> x = dattr({"abc":True})
+        # otherwise just make our key,value pairs accessible through . (e.g. x.name)
+        return self[name]
+
+    def __setattr__(self, name, value):
+        """
+        With a DictDotAttribute, you can do this:
+
+        >>> x = DictDotAttribute({"abc":True})
         >>> x.abc = False
         >>> x.abc
         False
@@ -80,41 +109,35 @@ class dattr(dict):
         self[name] = value
 
 
-class test_nested_dattr(unittest.TestCase):
-    def test_get(self):
-        x = dattr({"abc":{
-            "fed":"out"
-            }})
-        self.assertEqual(x.abc.fed, "out")
-
-    def test_set(self):
-        x = dattr({"abc":{
-            "fed":"out"
-            }})
-        x.abc.fed = "in"
-        self.assertEqual(x.abc.fed, "in")
-
 def c_array_init_file(filename):
-    with open(filename,"rb") as fd:
+    """
+    Print a C array initializer for a file
+    """
+    with open(filename, "rb") as fd:
         c_array_init(fd.read())
 
-def c_array_init(bs:bytes):
+
+def c_array_init(bs: bytes):
+    """
+    Print a C array initializer for a byte array
+    """
     print("uint8_t sample_stream[]={")
     line = ""
     cnt = 0
     for b in bs:
-        line += hex(b) 
-        line +=","
+        line += hex(b)
+        line += ","
         cnt += 1
         if cnt == 4:
-            line+="\t"
+            line += "\t"
         if cnt >= 8:
             print(line)
             line = ""
             cnt = 0
             continue
     print("}")
-    #cat filename |grep -o 'x' |wc -l to know how big it is
+    # cat filename |grep -o 'x' |wc -l to know how big it is
+
 
 if __name__ == "__main__":
     vars()[sys.argv[1]](*sys.argv[2:])

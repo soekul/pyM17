@@ -8,7 +8,7 @@ def default_config(c2_mode):
     c2, conrate, bitframe = codec2setup(c2_mode)
     print("conrate, bitframe = [%d,%d]" % (conrate, bitframe))
 
-    config = dattr({
+    config = DictDotAttribute({
         "m17": {
             "dst": "",
             "src": "",
@@ -25,14 +25,14 @@ def default_config(c2_mode):
     return config
 
 
-def m17_parrot(refcallsign, port=default_port):
+def m17_parrot(refcallsign, port=DEFAULT_PORT):
     # A parrot service for M17 - it's a full client that records and plays back after incoming stream is over PTT is released
     port = int(port)
     # udp_recv and udp_send are needed here, too.
     ...
 
 
-def m17_mirror(refcallsign, port=default_port):
+def m17_mirror(refcallsign, port=DEFAULT_PORT):
     # reflects your M17 stream back to you after decoding and encoding
     # can be useful for later transformations, like testing voice stream compatibilites
     port = int(port)
@@ -40,7 +40,7 @@ def m17_mirror(refcallsign, port=default_port):
     ...
 
 
-def udp_mirror(refcallsign, port=default_port):
+def udp_mirror(refcallsign, port=DEFAULT_PORT):
     # reflects your own UDP packets back to you after a delay
     port = int(port)
 
@@ -48,7 +48,7 @@ def udp_mirror(refcallsign, port=default_port):
 
     def packet_handler(sock, active_connections, bs, conn):
         if conn not in pkts:
-            pkts[conn] = dattr({"packets": [], "lastseen": time.time()})
+            pkts[conn] = DictDotAttribute({"packets": [], "lastseen": time.time()})
         else:
             this = pkts[conn]
             pkts[conn].packets.append((time.time() - this.lastseen, bs))
@@ -75,7 +75,7 @@ def udp_mirror(refcallsign, port=default_port):
     srv()
 
 
-def udp_reflector(refcallsign, port=default_port):
+def udp_reflector(refcallsign, port=DEFAULT_PORT):
     # "Reflects" an incoming stream to all connected users.
     # ✔ So first, we need a way to receive connections and keep track of them, right?
     # We also have our own callsign, but we'll deal with that later.
@@ -91,7 +91,7 @@ def udp_reflector(refcallsign, port=default_port):
     srv()
 
 
-def m17ref_client(mycall, mymodule, refname, module, port=default_port, mode=3200):
+def m17ref_client(mycall, mymodule, refname, module, port=DEFAULT_PORT, mode=3200):
     mode = int(mode)  # so we can call modular_client straight from command line
     port = int(port)
     if (refname.startswith("M17-") and len(refname) <= 7):
@@ -113,7 +113,7 @@ def m17ref_client(mycall, mymodule, refname, module, port=default_port, mode=320
     modular(config, [tx_chain, rx_chain])
 
 
-def voipsim(host="localhost", src="W2FBI", dst="SP5WWP", mode=3200, port=default_port):
+def voipsim(host="localhost", src="W2FBI", dst="SP5WWP", mode=3200, port=DEFAULT_PORT):
     mode = int(mode)  # so we can call modular_client straight from command line
     port = int(port)
     config = default_config(mode)
@@ -125,7 +125,7 @@ def voipsim(host="localhost", src="W2FBI", dst="SP5WWP", mode=3200, port=default
     modular(config, [tx_chain])
 
 
-def to_icecast(icecast_url, mode=3200, port=default_port):
+def to_icecast(icecast_url, mode=3200, port=DEFAULT_PORT):
     mode = int(mode)  # so we can call modular_client straight from command line
     port = int(port)
     rx_chain = [udp_recv(port), m17parse, payload2codec2, codec2dec, ffmpeg(icecast_url)]
@@ -134,7 +134,7 @@ def to_icecast(icecast_url, mode=3200, port=default_port):
     modular(config, [rx_chain])
 
 
-def to_pcm(mode=3200, port=default_port):
+def to_pcm(mode=3200, port=DEFAULT_PORT):
     mode = int(mode)  # so we can call modular_client straight from command line
     port = int(port)
     rx_chain = [udp_recv(port), m17parse, tee('m17'), payload2codec2, codec2dec, teefile('m17.raw'), null]
@@ -142,7 +142,7 @@ def to_pcm(mode=3200, port=default_port):
     modular(config, [rx_chain])
 
 
-def recv_dump(mode=3200, port=default_port):
+def recv_dump(mode=3200, port=DEFAULT_PORT):
     mode = int(mode)  # so we can call modular_client straight from command line
     port = int(port)
     rx_chain = [udp_recv(port), teefile("rx"), m17parse, tee('M17'), payload2codec2, teefile('out.c2_3200'), codec2dec,
@@ -151,7 +151,7 @@ def recv_dump(mode=3200, port=default_port):
     modular(config, [rx_chain])
 
 
-def voip(host="localhost", port=default_port, voipmode="full", mode=3200, src="W2FBI", dst="SP5WWP"):
+def voip(host="localhost", port=DEFAULT_PORT, voipmode="full", mode=3200, src="W2FBI", dst="SP5WWP"):
     mode = int(mode)  # so we can call modular_client straight from command line
     port = int(port)
 
@@ -180,7 +180,7 @@ def voip(host="localhost", port=default_port, voipmode="full", mode=3200, src="W
     modular(config, [tx_chain, rx_chain])
 
 
-def echolink_bridge(mycall, mymodule, refname, refmodule, refport=default_port, mode=3200):
+def echolink_bridge(mycall, mymodule, refname, refmodule, refport=DEFAULT_PORT, mode=3200):
     mode = int(mode)  # so we can call modular_client straight from command line
     refport = int(refport)
     if (refname.startswith("M17-") and len(refname) <= 7):
@@ -204,7 +204,7 @@ def echolink_bridge(mycall, mymodule, refname, refmodule, refport=default_port, 
     modular(config, [echolink_to_m17ref, m17ref_to_echolink])
 
 
-def m17_to_echolink(port=default_port, echolink_host="localhost", mode=3200, echolink_audio_in_port=55500):
+def m17_to_echolink(port=DEFAULT_PORT, echolink_host="localhost", mode=3200, echolink_audio_in_port=55500):
     port = int(port)
     mode = int(mode)
     echolink_audio_in_port = int(echolink_audio_in_port)
