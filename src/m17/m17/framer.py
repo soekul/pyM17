@@ -8,12 +8,18 @@ import random
 from m17.frames import LICHFrame, RegularFrame, IPFrame, chunk, M17Payload
 
 
-class M17_RFFramer:
+class M17RFFramer:
+    """
+    M17 RF Framer
+    """
     def __init__(self, *args, **kwargs):
         self.packet_count = 0
         self.lich_frame = LICHFrame(*args, **kwargs)
 
     def payload_stream(self, payload: bytes):
+        """
+        Take a payload and turn it into a series of frames
+        """
         payloads = chunk(payload, RegularFrame.payload_sz)
         pkts = []
         for p in payloads:
@@ -28,12 +34,18 @@ class M17_RFFramer:
         return pkts
 
 
-class M17_IPFramer(M17_RFFramer):
+class M17IPFramer(M17RFFramer):
+    """
+    M17 IP Frame Framer
+    """
     def __init__(self, stream_id: int=None, *args, **kwargs):
         self.stream_id = stream_id or random.randint(0, 2 ** 16 - 1)
         super().__init__(*args, **kwargs)
 
     def payload_stream(self, payload: bytes):
+        """
+        Take a payload and turn it into a series of frames
+        """
         # only difference is which frame we use, ipFrame instead of regularFrame
         lich_frame = self.lich_frame
         payloads = chunk(payload, RegularFrame.payload_sz)

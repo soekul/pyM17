@@ -1,7 +1,14 @@
 #!/usr/bin/env python
+import multiprocessing
+import sys
+import time
 
-import m17.network as network
-from .blocks import *
+from m17 import network
+from m17.blocks import codec2setup, udp_server, M17ReflectorClientBlocks, mic_audio, codec2enc, vox, m17frame, tobytes, \
+    m17parse, payload2codec2, codec2dec, spkr_audio, zeros, udp_send, udp_recv, ffmpeg, tee, teefile, null, chunker_b, \
+    np_convert, integer_decimate, integer_interpolate
+from m17.const import DEFAULT_PORT
+from m17.misc import DictDotAttribute
 
 
 def default_config(c2_mode):
@@ -102,7 +109,7 @@ def m17ref_client(mycall, mymodule, refname, module, port=DEFAULT_PORT, mode=320
     else:
         raise (NotImplementedError)
     myrefmod = "%s %s" % (mycall, mymodule)
-    c = m17ref_client_blocks(myrefmod, module, host, port)
+    c = M17ReflectorClientBlocks(myrefmod, module, host, port)
     tx_chain = [mic_audio, codec2enc, vox, m17frame, tobytes, c.sender()]
     rx_chain = [c.receiver(), m17parse, payload2codec2, codec2dec, spkr_audio]
     config = default_config(mode)
@@ -191,7 +198,7 @@ def echolink_bridge(mycall, mymodule, refname, refmodule, refport=DEFAULT_PORT, 
     else:
         raise (NotImplementedError)
     myrefmod = "%s %s" % (mycall, mymodule)
-    c = m17ref_client_blocks(myrefmod, refmodule, host, refport)
+    c = M17ReflectorClientBlocks(myrefmod, refmodule, host, refport)
     echolink_to_m17ref = [udp_recv(55501), chunker_b(640), np_convert("<h"), integer_decimate(2), codec2enc, m17frame,
                           tobytes, c.sender()]
     m17ref_to_echolink = [c.receiver(), m17parse, payload2codec2, codec2dec, integer_interpolate(2),

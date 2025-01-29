@@ -48,12 +48,13 @@ class Address:
 
     """
 
-    def __init__(self, **kwargs):
-        for k, v in kwargs.items():
-            if k in ["addr", "callsign"]:
-                setattr(self, k, v)
-        self.callsign = self.callsign.upper() if hasattr(self, "callsign") else self.decode(self.addr)
-        self.addr = self.addr if hasattr(self, "addr") else self.encode(self.callsign)
+    def __init__(self, addr: bytes=None, callsign: str=None):
+        if addr is None and callsign is None:
+            raise ValueError("Must provide either addr or callsign")
+
+        self.callsign = callsign.upper() if callsign else self.decode(addr)
+        self.addr = addr if addr else self.encode(callsign)
+
         if isinstance(self.addr, int):
             self.addr = self.addr.to_bytes(6, "big")
 

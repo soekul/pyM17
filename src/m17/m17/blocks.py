@@ -10,8 +10,9 @@ import time
 import numpy
 
 
-from m17.misc import print_hex
-from m17 import Address, IPFrame, M17_IPFramer
+from m17.misc import print_hex, chunk
+from m17 import Address, IPFrame, M17IPFramer
+from m17 import network
 
 
 def codeblock(callback):
@@ -59,7 +60,13 @@ def udp_server(port, packet_handler, occasional=None):
 
 
 def zeros(size, dtype, rate):
+    """
+    Generate a stream of numpy arrays of zeros at a specified rate
+    """
     def fn(config, inq, outq):
+        """
+        the block itself
+        """
         while 1:
             outq.put(numpy.zeros(size, dtype))
             time.sleep(1 / rate)
@@ -67,7 +74,10 @@ def zeros(size, dtype, rate):
     return fn
 
 
-class m17ref_client_blocks:
+class M17ReflectorClientBlocks:
+    """
+    A set of blocks that can be used to create a reflector client
+    """
     def __init__(self, mycall, theirmodule, host, port):
         self.mycall = mycall
         self.theirmodule = theirmodule
@@ -76,6 +86,9 @@ class m17ref_client_blocks:
         self.qs = {}
 
     def start(self):
+        """
+        start the reflector client
+        """
         process = multiprocessing.Process(name="m17ref_client_blocks", target=self.proc,
                                           args=(self.qs, self.mycall, self.theirmodule, self.host, self.port))
         process.start()
@@ -360,7 +373,7 @@ def m17frame(config, inq, outq):
     src = Address(callsign=config.m17.src)
     print(dst)
     print(src)
-    framer = M17_IPFramer(
+    framer = M17IPFramer(
         streamid=random.randint(1, 2 ** 16 - 1),
         dst=dst,
         src=src,

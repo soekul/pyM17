@@ -3,7 +3,6 @@ This script is used to check if the required modules are installed and working p
 """
 import sys
 
-
 if __name__ == "__main__":
     try:
         import soundcard as sc

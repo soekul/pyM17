@@ -63,18 +63,6 @@ def chunk(b: bytes, size: int):
         return [b[i:i + size] for i in range(0, len(b), size)]
 
 
-def test_b(x):
-    """
-    Test the binary print functions
-    :param x: number to test
-
-    """
-    print(print_4bits(int(x)))
-    print(print_bits(int(x)))
-    print(print_8bits(int(x)))
-    print(print_16bits(int(x)))
-
-
 class DictDotAttribute(dict):
     """
     "DictDotAttribute", used for when you don't want to type [""] all the time

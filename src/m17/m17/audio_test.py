@@ -3,6 +3,7 @@ Provides a test of the soundcard library. It will record from the default microp
  play back to the default speaker.
 """
 import sys
+
 import soundcard as sc
 
 try:
