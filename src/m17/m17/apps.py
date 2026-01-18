@@ -3,16 +3,14 @@ import multiprocessing
 import sys
 import time
 
-from m17 import network
-from m17.blocks import codec2setup, udp_server, M17ReflectorClientBlocks, mic_audio, codec2enc, vox, m17frame, tobytes, \
-    m17parse, payload2codec2, codec2dec, spkr_audio, zeros, udp_send, udp_recv, ffmpeg, tee, teefile, null, chunker_b, \
-    np_convert, integer_decimate, integer_interpolate
+import m17.blocks
+import m17.network
 from m17.const import DEFAULT_PORT
 from m17.misc import DictDotAttribute
 
 
 def default_config(c2_mode):
-    c2, conrate, bitframe = codec2setup(c2_mode)
+    c2, conrate, bitframe = m17.blocks.codec2setup(c2_mode)
     print("conrate, bitframe = [%d,%d]" % (conrate, bitframe))
 
     config = DictDotAttribute({
@@ -41,7 +39,7 @@ def m17_parrot(refcallsign, port=DEFAULT_PORT):
 
 def m17_mirror(refcallsign, port=DEFAULT_PORT):
     # reflects your M17 stream back to you after decoding and encoding
-    # can be useful for later transformations, like testing voice stream compatibilites
+    # can be useful for later transformations, like testing voice stream compatibilities
     port = int(port)
     # udp_recv and udp_send are needed here, too.
     ...
@@ -78,7 +76,7 @@ def udp_mirror(refcallsign, port=DEFAULT_PORT):
         for conn in delthese:
             del pkts[conn]
 
-    srv = udp_server(port, packet_handler, timer)
+    srv = m17.blocks.udp_server(port, packet_handler, timer)
     srv()
 
 
@@ -94,7 +92,7 @@ def udp_reflector(refcallsign, port=DEFAULT_PORT):
         for c in others:
             sock.sendto(bs, c)
 
-    srv = udp_server(port, packet_handler)
+    srv = m17.blocks.udp_server(port, packet_handler)
     srv()
 
 
@@ -103,15 +101,17 @@ def m17ref_client(mycall, mymodule, refname, module, port=DEFAULT_PORT, mode=320
     port = int(port)
     if (refname.startswith("M17-") and len(refname) <= 7):
         # should also be able to look up registered port in dns
-        host = network.m17ref_name2host(refname)
+        host = m17.network.m17ref_name2host(refname)
         print(host)
         # fallback to fetching json if its not in dns already
     else:
         raise (NotImplementedError)
     myrefmod = "%s %s" % (mycall, mymodule)
-    c = M17ReflectorClientBlocks(myrefmod, module, host, port)
-    tx_chain = [mic_audio, codec2enc, vox, m17frame, tobytes, c.sender()]
-    rx_chain = [c.receiver(), m17parse, payload2codec2, codec2dec, spkr_audio]
+    c = m17.blocks.M17ReflectorClientBlocks(myrefmod, module, host, port)
+    tx_chain = [m17.blocks.mic_audio, m17.blocks.codec2enc, m17.blocks.vox, m17.blocks.m17frame, m17.blocks.tobytes,
+                c.sender()]
+    rx_chain = [c.receiver(), m17.blocks.m17parse, m17.blocks.payload2codec2, m17.blocks.codec2dec,
+                m17.blocks.spkr_audio]
     config = default_config(mode)
     config.m17.dst = "%s %s" % (refname, module)
     config.m17.src = mycall
@@ -124,8 +124,9 @@ def voipsim(host="localhost", src="W2FBI", dst="SP5WWP", mode=3200, port=DEFAULT
     mode = int(mode)  # so we can call modular_client straight from command line
     port = int(port)
     config = default_config(mode)
-    audio_sim = zeros(size=config.codec2.conrate, dtype="<h", rate=50)
-    tx_chain = [audio_sim, codec2enc, m17frame, tobytes, udp_send((host, port))]
+    audio_sim = m17.blocks.zeros(size=config.codec2.conrate, dtype="<h", rate=50)
+    tx_chain = [audio_sim, m17.blocks.codec2enc, m17.blocks.m17frame, m17.blocks.tobytes,
+                m17.blocks.udp_send((host, port))]
     config.m17.dst = dst
     config.m17.src = src
     print(config)
@@ -135,7 +136,8 @@ def voipsim(host="localhost", src="W2FBI", dst="SP5WWP", mode=3200, port=DEFAULT
 def to_icecast(icecast_url, mode=3200, port=DEFAULT_PORT):
     mode = int(mode)  # so we can call modular_client straight from command line
     port = int(port)
-    rx_chain = [udp_recv(port), m17parse, payload2codec2, codec2dec, ffmpeg(icecast_url)]
+    rx_chain = [m17.blocks.udp_recv(port), m17.blocks.m17parse, m17.blocks.payload2codec2, m17.blocks.codec2dec,
+                m17.blocks.ffmpeg(icecast_url)]
     # rx_chain = [udp_recv(port), m17parse, tee('m17'), payload2codec2, codec2dec, ffmpeg(icecast_url)]
     config = default_config(mode)
     modular(config, [rx_chain])
@@ -144,7 +146,8 @@ def to_icecast(icecast_url, mode=3200, port=DEFAULT_PORT):
 def to_pcm(mode=3200, port=DEFAULT_PORT):
     mode = int(mode)  # so we can call modular_client straight from command line
     port = int(port)
-    rx_chain = [udp_recv(port), m17parse, tee('m17'), payload2codec2, codec2dec, teefile('m17.raw'), null]
+    rx_chain = [m17.blocks.udp_recv(port), m17.blocks.m17parse, m17.blocks.tee('m17'), m17.blocks.payload2codec2,
+                m17.blocks.codec2dec, m17.blocks.teefile('m17.raw'), m17.blocks.null]
     config = default_config(mode)
     modular(config, [rx_chain])
 
@@ -152,8 +155,9 @@ def to_pcm(mode=3200, port=DEFAULT_PORT):
 def recv_dump(mode=3200, port=DEFAULT_PORT):
     mode = int(mode)  # so we can call modular_client straight from command line
     port = int(port)
-    rx_chain = [udp_recv(port), teefile("rx"), m17parse, tee('M17'), payload2codec2, teefile('out.c2_3200'), codec2dec,
-                teefile('out.raw'), spkr_audio]
+    rx_chain = [m17.blocks.udp_recv(port), m17.blocks.teefile("rx"), m17.blocks.m17parse, m17.blocks.tee('M17'),
+                m17.blocks.payload2codec2, m17.blocks.teefile('out.c2_3200'), m17.blocks.codec2dec,
+                m17.blocks.teefile('out.raw'), m17.blocks.spkr_audio]
     config = default_config(mode)
     modular(config, [rx_chain])
 
@@ -168,8 +172,10 @@ def voip(host="localhost", port=DEFAULT_PORT, voipmode="full", mode=3200, src="W
     # this means the tx and rx paths are completely separate, which is,
     # if nothing else, simple to reason about
 
-    tx_chain = [mic_audio, codec2enc, vox, m17frame, tobytes, udp_send((host, port))]
-    rx_chain = [udp_recv(port), m17parse, payload2codec2, codec2dec, spkr_audio]
+    tx_chain = [m17.blocks.mic_audio, m17.blocks.codec2enc, m17.blocks.vox, m17.blocks.m17frame, m17.blocks.tobytes,
+                m17.blocks.udp_send((host, port))]
+    rx_chain = [m17.blocks.udp_recv(port), m17.blocks.m17parse, m17.blocks.payload2codec2, m17.blocks.codec2dec,
+                m17.blocks.spkr_audio]
     if voipmode == "tx":
         # disable the rx chain
         # useful for when something's already bound to listening port
@@ -192,17 +198,19 @@ def echolink_bridge(mycall, mymodule, refname, refmodule, refport=DEFAULT_PORT, 
     refport = int(refport)
     if (refname.startswith("M17-") and len(refname) <= 7):
         # should also be able to look up registered port in dns
-        host = network.m17ref_name2host(refname)
+        host = m17.network.m17ref_name2host(refname)
         print(host)
         # fallback to fetching json if its not in dns already
     else:
         raise (NotImplementedError)
     myrefmod = "%s %s" % (mycall, mymodule)
-    c = M17ReflectorClientBlocks(myrefmod, refmodule, host, refport)
-    echolink_to_m17ref = [udp_recv(55501), chunker_b(640), np_convert("<h"), integer_decimate(2), codec2enc, m17frame,
-                          tobytes, c.sender()]
-    m17ref_to_echolink = [c.receiver(), m17parse, payload2codec2, codec2dec, integer_interpolate(2),
-                          udp_send(("127.0.0.1", 55500))]
+    c = m17.blocks.M17ReflectorClientBlocks(myrefmod, refmodule, host, refport)
+    echolink_to_m17ref = [m17.blocks.udp_recv(55501), m17.blocks.chunker_b(640), m17.blocks.np_convert("<h"),
+                          m17.blocks.integer_decimate(2), m17.blocks.codec2enc, m17.blocks.m17frame,
+                          m17.blocks.tobytes, c.sender()]
+    m17ref_to_echolink = [c.receiver(), m17.blocks.m17parse, m17.blocks.payload2codec2, m17.blocks.codec2dec,
+                          m17.blocks.integer_interpolate(2),
+                          m17.blocks.udp_send(("127.0.0.1", 55500))]
     config = default_config(mode)
     config.m17.dst = "%s %s" % (refname, refmodule)
     config.m17.src = mycall
@@ -220,10 +228,10 @@ def m17_to_echolink(port=DEFAULT_PORT, echolink_host="localhost", mode=3200, ech
     (useful for interopability testing)
     """
     chain = [
-        udp_recv(port),
-        m17parse, payload2codec2, codec2dec,
-        integer_interpolate(2),  # echolink wants 16k audio
-        udp_send((echolink_host, echolink_audio_in_port))
+        m17.blocks.udp_recv(port),
+        m17.blocks.m17parse, m17.blocks.payload2codec2, m17.blocks.codec2dec,
+        m17.blocks.integer_interpolate(2),  # echolink wants 16k audio
+        m17.blocks.udp_send((echolink_host, echolink_audio_in_port))
     ]
     config = default_config(mode)
     config.verbose = 0
@@ -235,8 +243,8 @@ def _test_chains_example():
     example playground for testing 
     """
     test_chain = [
-        mic_audio,
-        codec2enc,  # .02ms of audio per q element at c2.3200 in this part of chain
+        m17.blocks.mic_audio,
+        m17.blocks.codec2enc,  # .02ms of audio per q element at c2.3200 in this part of chain
         # delay(5/.02), #to delay for 5s, divide 5s by the time-length of a q element in this part of chain (which does change)
         # tee("delayed c2bytes: "),
         # teefile("out.m17"),
@@ -248,9 +256,9 @@ def _test_chains_example():
         # udp_recv,
         # m17parse,
         # payload2codec2, #back to .02ms per q el
-        codec2dec,
+        m17.blocks.codec2dec,
         # null,
-        spkr_audio
+        m17.blocks.spkr_audio
     ]
     config = default_config(mode)
     config.verbose = 1
